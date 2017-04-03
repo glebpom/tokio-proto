@@ -1,11 +1,12 @@
 use std::{fmt, io};
 use std::sync::Arc;
 use std::net::SocketAddr;
+use std::net;
 use std::marker::PhantomData;
 
 use BindClient;
 use tokio_core::reactor::Handle;
-use tokio_core::net::{TcpStream, TcpStreamNew};
+use tokio_core::net::TcpStream;
 use futures::{Future, Poll, Async};
 
 // TODO: add configuration, e.g.:
@@ -35,7 +36,7 @@ pub struct TcpClient<Kind, P> {
 pub struct Connect<Kind, P> {
     _kind: PhantomData<Kind>,
     proto: Arc<P>,
-    socket: TcpStreamNew,
+    socket: Box<Future<Item=TcpStream, Error=io::Error>>,
     handle: Handle,
 }
 
@@ -72,7 +73,27 @@ impl<Kind, P> TcpClient<Kind, P> where P: BindClient<Kind, TcpStream> {
         Connect {
             _kind: PhantomData,
             proto: self.proto.clone(),
-            socket: TcpStream::connect(addr, handle),
+            socket: Box::new(TcpStream::connect(addr, handle)),
+            handle: handle.clone(),
+        }
+    }
+
+    /// Establish a connection to the given address using provided TcpStream.
+    ///
+    /// # Return value
+    ///
+    /// Returns a future for the establishment of the connection. When the
+    /// future completes, it yields an instance of `Service` for interacting
+    /// with the server.
+    pub fn connect_stream(&self,
+                          stream: net::TcpStream,
+                          addr: &SocketAddr,
+                          handle: &Handle)
+                          -> Connect<Kind, P> {
+        Connect {
+            _kind: PhantomData,
+            proto: self.proto.clone(),
+            socket: TcpStream::connect_stream(stream, addr, handle),
             handle: handle.clone(),
         }
     }
