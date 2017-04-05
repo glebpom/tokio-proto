@@ -76,6 +76,16 @@ impl<Kind, P> TcpClient<Kind, P> where P: BindClient<Kind, TcpStream> {
             handle: handle.clone(),
         }
     }
+
+    /// Bind existing `TcpStream` to a client protocol
+    ///
+    /// # Return value
+    ///
+    /// Returns a `Result` with the `Service` for interacting with the server.
+    pub fn bind_client(&self, stream: TcpStream, handle: &Handle)
+                       -> Result<P::BindClient, io::Error> {
+        Ok(self.proto.bind_client(&handle, stream))
+    }
 }
 
 impl<Kind, P> fmt::Debug for Connect<Kind, P> {
